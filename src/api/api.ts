@@ -89,7 +89,7 @@ export class JsonSubwayApi implements SubwayApi {
       }))
 
       return {
-        stations,
+        stations: stations.sort((a, b) => a.order - b.order),
         schedules,
         holidays,
       }
