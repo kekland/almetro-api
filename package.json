@@ -1,0 +1,33 @@
+{
+  "name": "almetro-api",
+  "version": "0.0.1",
+  "description": "API for Almetro",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "node build/main"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kekland/almetro-api.git"
+  },
+  "author": "kekland <kk.erzhan@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kekland/almetro-api/issues"
+  },
+  "homepage": "https://github.com/kekland/almetro-api#readme",
+  "dependencies": {
+    "axios": "^0.21.0",
+    "express": "^4.17.1",
+    "express-rate-limit": "^5.2.3",
+    "fs": "0.0.1-security"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.9",
+    "@types/express-rate-limit": "^5.1.0",
+    "@types/node": "^14.14.9"
+  }
+}
