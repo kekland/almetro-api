@@ -21,11 +21,13 @@
   "homepage": "https://github.com/kekland/almetro-api#readme",
   "dependencies": {
     "axios": "^0.21.0",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-rate-limit": "^5.2.3",
     "fs": "0.0.1-security"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.10",
     "@types/express": "^4.17.9",
     "@types/express-rate-limit": "^5.1.0",
     "@types/node": "^14.14.9"

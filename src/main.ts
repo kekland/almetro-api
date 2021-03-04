@@ -3,6 +3,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import { Database } from "./data/db";
 import { SubwayData } from "./data/model";
+import cors from "cors"
 
 const api = new JsonSubwayApi()
 const db = new Database<SubwayData>('./db/data.json')
@@ -29,6 +30,7 @@ const main = async () => {
   }
 
   const server = express()
+  server.use(cors())
 
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
