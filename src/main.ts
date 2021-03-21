@@ -1,113 +1,88 @@
-import { JsonSubwayApi } from "./api/api";
 import express from 'express'
 import rateLimit from 'express-rate-limit'
-import { Database } from "./data/db";
-import { SubwayData } from "./data/model";
-import cors from "cors"
+import cors from 'cors'
+import { MetroApi } from './api/metro-api'
+import { ApiCache } from './cache/cache'
+import { ISubwayData } from './api/model'
+import { Api } from './api/api'
 
-const api = new JsonSubwayApi()
-const db = new Database<SubwayData>('./db/data.json')
+// A port can be provided through environmental variables. Fallback value is "5134"
+const port = parseInt(process.env.PORT ?? '5134')
 
-const fetchAndUpdate = async (): Promise<void> => {
-  try {
-    const data = await api.fetchData()
-    await db.setData(data)
+// A default provider that this api will use
+const api = new MetroApi()
+
+// Fallback providers in case if default api fails
+const fallbackApis: Api[] = []
+
+// Cache layer
+const cache = new ApiCache<ISubwayData>('./db/data.json')
+
+// Interval of [loop] - set to 1 hour by default
+const loopInterval = 60 * 60 * 1000
+const loop = async () => {
+  // Will try to fetch up-to-date data and save the results to cache
+  const fetch = async (provider: Api): Promise<boolean> => {
+    try {
+      const data = await provider.getData()
+      await cache.saveToCache(data)
+      return true
+    }
+    catch (e) {
+      console.error(e)
+      return false
+    }
   }
-  catch (e) {
-    console.log(e)
+
+  // Will iterate through providers until it gets a response
+  for (const provider of [api, ...fallbackApis]) {
+    const response = await fetch(provider)
+    if (response) break
   }
+
+  setInterval(() => loop(), loopInterval)
 }
 
 const main = async () => {
-  setInterval(fetchAndUpdate, 15 * 60 * 1000)
+  // Try to load cached data before starting the server
+  await cache.tryLoadFromCache()
 
-  try {
-    await db.fetchCachedData()
-  }
-  catch (e) {
-    console.log('No previously cached data found')
-    await fetchAndUpdate()
+  // If the cache is empty, then fetch up-to-date data from a provider
+  if (!cache.currentValue) {
+    await loop()
   }
 
+  // Instantiate the server
   const server = express()
   server.use(cors())
 
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000,
+    max: 10,
   });
 
   server.use(limiter)
 
-  server.get('/data', (req, res) => {
-    try {
-      const data = db.getLastCachedData()
-      res.status(200).send(data)
-    }
-    catch (error) {
-      res.status(500).send({ error })
-    }
-  })
+  const methods: { [path: string]: () => any } = {
+    '/data/all': () => cache.currentValue!,
+    '/data/holidays': () => cache.currentValue!.events,
+    '/data/lines': () => cache.currentValue!.lines,
+    '/data/stations': () => cache.currentValue!.stations,
+  }
 
-  server.get('/data/holidays', (req, res) => {
-    try {
-      const data = db.getLastCachedData()
-      res.status(200).send(data.holidays)
-    }
-    catch (error) {
-      res.status(500).send({ error })
-    }
-  })
-
-  server.get('/data/stations', (req, res) => {
-    try {
-      const data = db.getLastCachedData()
-      res.status(200).send(data.stations)
-    }
-    catch (error) {
-      res.status(500).send({ error })
-    }
-  })
-
-  server.get('/data/schedules', (req, res) => {
-    try {
-      const data = db.getLastCachedData()
-      res.status(200).send(data.schedules)
-    }
-    catch (error) {
-      res.status(500).send({ error })
-    }
-  })
-
-  server.get('/data/today', (req, res) => {
-    try {
-      const data = db.getLastCachedData()
-      const now = new Date(Date.now())
-
-      const isHoliday =
-        now.getDay() === 0 ||
-        now.getDay() === 6 ||
-        data.holidays.some((v) => {
-          const date = new Date(v.date)
-          return date.getDate() === now.getDate() &&
-            date.getMonth() === now.getMonth() &&
-            date.getFullYear() === now.getFullYear()
-        })
-
-      res.status(200).send({
-        stations: data.stations,
-        holidays: data.holidays,
-        schedule: isHoliday ? data.schedules.holiday : data.schedules.normal,
-        isHoliday,
-      })
-    }
-    catch (error) {
-      res.status(500).send({ error })
-    }
-  })
-
-  server.listen(5134, () => {
-    console.log('Listening on 5134')
+  for (const path in methods) {
+    server.get(path, (_, res) => {
+      if (cache.currentValue) {
+        res.send(methods[path]())
+      }
+      else {
+        res.status(500).send({ error: 'Try again later' })
+      }
+    })
+  }
+  
+  server.listen(port, () => {
+    console.log(`Listening on ${port}`)
   })
 }
 
