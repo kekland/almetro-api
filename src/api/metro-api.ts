@@ -78,29 +78,73 @@ export class MetroApi implements Api {
     }))
   }
 
+  protected populateStationScheduleDuration(data: ISubwayStationSchedule[]): ISubwayStationSchedule[] {
+    const cache: { [key: string]: number } = {}
+
+    const getCacheId = (id: string, nextId: string) => {
+      return id.localeCompare(nextId) > 0 ?
+        `${id}:${nextId}` : `${nextId}:${id}`
+    }
+
+    for (const item of data) {
+      const cacheId = getCacheId(item.id, item.nextId)
+
+      if (cache[cacheId]) {
+        item.duration = cache[cacheId]
+      }
+      else {
+        const nextItems = data.filter((v) => v.id === item.nextId && v.nextId !== item.id)
+
+        if (nextItems.length !== 1) {
+          item.duration = -1
+        } else {
+          const departure = item.schedule[0]
+          const arrival = nextItems[0].schedule.find((v) => v > departure)!
+          const duration = arrival - departure
+
+          item.duration = duration
+          cache[cacheId] = duration
+        }
+      }
+    }
+
+    for (const item of data) {
+      if (item.duration === -1) {
+        const cacheId = getCacheId(item.id, item.nextId)
+        item.duration = cache[cacheId]
+      }
+    }
+
+    return data
+  }
+
   public async getData(): Promise<ISubwayData> {
     const response = await axios.get('http://metro.witharts.kz/metro/api/0/all')
 
     const data: IMetroApiResponse = response.data
 
-    const stations: ISubwayStation[] = data.stations.map((v) => ({
-      id: v.id,
-      name: {
-        kk: v.name_kaz,
-        ru: v.name,
-        en: v.name_eng,
-      },
-      position: {
-        latitude: parseFloat(v.latitude),
-        longitude: parseFloat(v.longitude),
-      }
-    }))
+    const stations: ISubwayStation[] = data.stations
+      .sort((a, b) => a.station_order.localeCompare(b.station_order))
+      .map((v) => ({
+        id: v.id,
+        name: {
+          kk: v.name_kaz,
+          ru: v.name,
+          en: v.name_eng,
+        },
+        position: {
+          latitude: parseFloat(v.latitude),
+          longitude: parseFloat(v.longitude),
+        }
+      }))
 
     const scheduleKeys: ISubwayScheduleType[] = ['normal', 'holiday']
     const scheduleValues = scheduleKeys.map(
-      (schedule) => data.stations
-        .map((v) => this.parseStationSchedule(v, schedule))
-        .reduce((prev, next) => prev.concat(next), [])
+      (schedule) => this.populateStationScheduleDuration(
+        data.stations
+          .map((v) => this.parseStationSchedule(v, schedule))
+          .reduce((prev, next) => prev.concat(next), [])
+      )
     )
 
     // A hard-coded value, since the subway has only one line.

@@ -48,9 +48,7 @@ const main = async () => {
   await cache.tryLoadFromCache()
 
   // If the cache is empty, then fetch up-to-date data from a provider
-  if (!cache.currentValue) {
-    await loop()
-  }
+  await loop()
 
   // Instantiate the server
   const server = express()
@@ -80,7 +78,7 @@ const main = async () => {
       }
     })
   }
-  
+
   server.listen(port, () => {
     console.log(`Listening on ${port}`)
   })
