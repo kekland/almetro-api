@@ -1,7 +1,7 @@
 // The object returned from the API. Contains everything that is
 // needed by the UI to display information about the subway.
 export interface ISubwayData {
-  stations: { [id: string]: ISubwayStation[] }
+  stations: { [id: string]: ISubwayStation }
   lines: { [id: string]: ISubwayLine }
   events: ISubwayScheduleEvent[]
 }
