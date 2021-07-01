@@ -79,6 +79,16 @@ const main = async () => {
     })
   }
 
+  server.get('/data/original', async (_, res) => {
+    try {
+      const value = await api.getOriginal()
+      res.status(200).send(value)
+    }
+    catch (e) {
+      res.status(500).send(e)
+    }
+  })
+
   server.listen(port, () => {
     console.log(`Listening on ${port}`)
   })

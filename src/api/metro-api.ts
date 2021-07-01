@@ -170,4 +170,14 @@ export class MetroApi implements Api {
       events,
     }
   }
+
+  async getOriginal(): Promise<any> {
+    const response = await axios.get('http://metro.witharts.kz/metro/api/0/all', {
+      headers: {
+        'X-Requested-With': 'com.witharts.metro',
+      },
+    })
+
+    return response.data
+  }
 }
