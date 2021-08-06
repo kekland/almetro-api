@@ -56,7 +56,7 @@ const main = async () => {
 
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 100,
   });
 
   server.use(limiter)
